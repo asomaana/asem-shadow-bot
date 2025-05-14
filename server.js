@@ -3,44 +3,46 @@ const bodyParser = require("body-parser");
 const axios = require("axios");
 
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "asemshadow2025";
-const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || "EAAOLyeDxkKABO9Ke4kLM0MNnE6gvCodgsIlpYGNXrUkHMYZA4qhC6UFwOQl9XhDzyhtsFPbLogR7mhs0U64xkkyQ2TVPLBtlrbUGCb5u3SgvzzBCVRZCr0h3TGpHEI23tcouHwgxEbzRdZAZBmBYigrqAavkgPMhZBopndH0Y5IFzE5uEu2ePCjcJPTLyycjwTs4sNqckZCYcgZAdU27dESfzgZD";
+const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || "YOUR_WHATSAPP_TOKEN_HERE"; // غيّر هذا لو ما استخدمت Environment Variables
 
 app.use(bodyParser.json());
 
+// Webhook verification
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
-  if (mode && token === VERIFY_TOKEN) {
+
+  if (mode === "subscribe" && token === VERIFY_TOKEN) {
     res.status(200).send(challenge);
   } else {
     res.sendStatus(403);
   }
 });
 
+// Handle incoming messages
 app.post("/webhook", async (req, res) => {
   const body = req.body;
+
   if (body.object === "whatsapp_business_account") {
     body.entry.forEach(async (entry) => {
-      const changes = entry.changes;
+      const changes = entry.changes || [];
       changes.forEach(async (change) => {
-        const message = change.value.messages?.[0];
+        const message = change.value?.messages?.[0];
+        const phone_number_id = change.value?.metadata?.phone_number_id;
         const from = message?.from;
-        const text = message?.text?.body;
+        const msg_body = message?.text?.body;
 
-        console.log("رسالة وصلت من:", from, "المحتوى:", text);
-
-        if (text) {
-          // رد تلقائي
+        if (msg_body && from && phone_number_id) {
           await axios.post(
-            "https://graph.facebook.com/v18.0/598996079972985/messages",
+            `https://graph.facebook.com/v19.0/${phone_number_id}/messages`,
             {
               messaging_product: "whatsapp",
               to: from,
-              text: { body: "هلا بيك تفضل، عاصم الظل معك!" },
+              text: { body: `هلا بيك، وصلتني: ${msg_body}` },
             },
             {
               headers: {
@@ -59,6 +61,6 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`عاصم الظل شغال على البورت ${port}`);
+app.listen(PORT, () => {
+  console.log(`عاصم الظل شغال على البورت ${PORT}`);
 });
