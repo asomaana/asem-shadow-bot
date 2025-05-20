@@ -5,65 +5,82 @@ const axios = require("axios");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "asemshadow2025";
-const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || "YOUR_WHATSAPP_TOKEN"; // غيّرها إذا بدك
+// بيانات API من Meta
+const WHATSAPP_TOKEN = "EAAOLyeDxkKABOZBCYwZB2ZA76xmQ3MMiXys47RZAcgZAk9X5OnDHfvoinlkRZBnyoDAopitikymtme6cCDQzq5MuooHHcjGZCFdP2DFSRJm66RvlZCCEWLmX03DXoy9YpsW1WhSvGvfEyb48kNvjZBySrM2LdAMZBrQdEBBShEyF8XsTbo1dlWgBQIP342TJXpIZAHQI06qmhHgp6SHZAyb79pgkOA4ZD";
+const PHONE_NUMBER_ID = "598960679972985"; // Phone number ID من Meta
 
 app.use(bodyParser.json());
 
-// Webhook verification (GET)
+// صفحة اختبار بسيطة على المتصفح
 app.get("/webhook", (req, res) => {
- const mode = req.query["hub.mode"];
- const token = req.query["hub.verify_token"];
- const challenge = req.query["hub.challenge"];
-
- if (mode === "subscribe" && token === VERIFY_TOKEN) {
-   console.log("Webhook verified successfully.");
-   res.status(200).send(challenge);
- } else {
-   res.sendStatus(403);
- }
+  res.send("Webhook endpoint for Travellio AI is live!");
 });
 
-// Handle messages (POST)
+// تحقق Meta من الربط
+app.get("/webhook", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  if (mode === "subscribe" && token === "123456shadowAsem") {
+    console.log("Webhook verified successfully.");
+    res.status(200).send(challenge);
+  } else {
+    res.sendStatus(403);
+  }
+});
+
+// استقبال رسائل واتساب والرد عليها
 app.post("/webhook", async (req, res) => {
- const body = req.body;
+  const body = req.body;
 
- if (body.object === "whatsapp_business_account") {
-   body.entry.forEach(async (entry) => {
-     const changes = entry.changes || [];
-     const value = changes[0]?.value;
-     const message = value?.messages?.[0];
-     const phone_number_id = value?.metadata?.phone_number_id;
-     const from = message?.from;
-     const text = message?.text?.body;
+  if (body.object) {
+    const entry = body.entry?.[0];
+    const changes = entry?.changes?.[0];
+    const value = changes?.value;
+    const message = value?.messages?.[0];
 
-     if (from && text) {
-       console.log(`Received message from ${from}: ${text}`);
+    if (message && message.type === "text") {
+      const from = message.from;
+      const text = message.text.body.toLowerCase();
+      console.log("Received message:", text);
 
-       // رد تلقائي
-       await axios.post(
-         `https://graph.facebook.com/v17.0/${phone_number_id}/messages`,
-         {
-           messaging_product: "whatsapp",
-           to: from,
-           text: { body: "هلا والله! معك عاصم الظل، كيف أقدر أساعدك؟" },
-         },
-         {
-           headers: {
-             Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-             "Content-Type": "application/json",
-           },
-         }
-       );
-     }
-   });
+      let reply = "";
 
-   res.sendStatus(200);
- } else {
-   res.sendStatus(404);
- }
+      // ردود أولية ذكية
+      if (text.includes("مرحبا") || text.includes("السلام")) {
+        reply = "هلا بيك، معك Travelio AI. كيف بقدر أساعدك اليوم؟";
+      } else if (text.includes("فندق") || text.includes("السعر")) {
+        reply = "ممكن ترسللي اسم الفندق وتاريخ الوصول والمغادرة؟";
+      } else if (text.includes("شكرا") || text.includes("ممتاز")) {
+        reply = "العفو يا غالي، أنا بالخدمة دايمًا.";
+      } else {
+        reply = "وصلت رسالتك، براجعها وبرجعلك بأقرب وقت.";
+      }
+
+      // إرسال الرد عبر واتساب Cloud API
+      await axios({
+        method: "POST",
+        url: `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+        },
+        data: {
+          messaging_product: "whatsapp",
+          to: from,
+          text: { body: reply },
+        },
+      });
+    }
+
+    res.sendStatus(200);
+  } else {
+    res.sendStatus(404);
+  }
 });
 
+// تشغيل السيرفر
 app.listen(PORT, () => {
- console.log("عاصم الظل شغّال على البورت", PORT);
+  console.log(`Travellio AI server is running on port ${PORT}`);
 });
