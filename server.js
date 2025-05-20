@@ -5,14 +5,14 @@ const axios = require("axios");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// قراءة التوكنات من Environment Variables
+// بيئة المتغيرات (تأخذها من Render)
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
 app.use(bodyParser.json());
 
-// تأكيد الربط مع فيسبوك
+// تأكيد التحقق من Meta
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -26,57 +26,45 @@ app.get("/webhook", (req, res) => {
   }
 });
 
-// استلام الرسائل من واتساب
+// استقبال رسائل من Meta
 app.post("/webhook", async (req, res) => {
   const body = req.body;
 
   if (body.object) {
     const entry = body.entry?.[0];
     const changes = entry?.changes?.[0];
-    const value = changes?.value;
-    const message = value?.messages?.[0];
+    const message = changes?.value?.messages?.[0];
 
-    if (message && message.type === "text") {
-      const from = message.from;
-      const text = message.text.body.toLowerCase();
-      console.log("Received message:", text);
+    if (message && message.text && message.from) {
+      const senderPhone = message.from;
+      const receivedText = message.text.body.toLowerCase();
 
-      let reply = "";
+      console.log("Received message:", receivedText);
 
-      // الردود الذكية
-      if (text.includes("مرحبا") || text.includes("السلام")) {
-        reply = "أهلاً وسهلاً! كيف فيني أساعدك اليوم؟";
-      } else if (text.includes("اسطنبول") || text.includes("istanbul")) {
-        reply = "لدينا باقات رائعة إلى إسطنبول! بتحب أرسل لك التفاصيل؟";
-      } else if (text.includes("شكرا") || text.includes("thx")) {
-        reply = "العفو، هذا واجبي!";
-      } else {
-        reply = "معك Travelio AI – كيف بقدر أساعدك؟";
-      }
+      const replyText = ⁠ أهلاً بيك، وصلت رسالتك: ${receivedText} ⁠;
 
-      // إرسال الرد
       await axios.post(
-        `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
+        ⁠ https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages ⁠,
         {
           messaging_product: "whatsapp",
-          to: from,
-          text: { body: reply },
+          to: senderPhone,
+          text: { body: replyText },
         },
         {
           headers: {
-            Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+            Authorization: ⁠ Bearer ${WHATSAPP_TOKEN} ⁠,
             "Content-Type": "application/json",
           },
         }
       );
     }
+
     res.sendStatus(200);
   } else {
     res.sendStatus(404);
   }
 });
 
-// تشغيل السيرفر
 app.listen(PORT, () => {
-  console.log(`عاصم الظل شغال على البورت ${PORT}`);
+  console.log(⁠ Server is running on port ${PORT} ⁠);
 });
