@@ -11,65 +11,73 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
 app.use(bodyParser.json());
 
+// Webhook verification
 app.get("/webhook", (req, res) => {
- const mode = req.query["hub.mode"];
- const token = req.query["hub.verify_token"];
- const challenge = req.query["hub.challenge"];
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
 
- if (mode === "subscribe" && token === VERIFY_TOKEN) {
-   console.log("Webhook verified successfully.");
-   res.status(200).send(challenge);
- } else {
-   res.sendStatus(403);
- }
+  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    console.log("Webhook verified successfully.");
+    res.status(200).send(challenge);
+  } else {
+    res.sendStatus(403);
+  }
 });
 
+// Handle incoming messages
 app.post("/webhook", async (req, res) => {
- const body = req.body;
+  const body = req.body;
 
- if (body.object) {
-   const entry = body.entry?.[0];
-   const changes = entry?.changes?.[0];
-   const message = changes?.value?.messages?.[0];
+  if (body.object) {
+    const entry = body.entry?.[0];
+    const changes = entry?.changes?.[0];
+    const message = changes?.value?.messages?.[0];
 
-   if (message && message.text && message.from) {
-     const senderPhone = message.from;
-     const receivedText = message.text.body.toLowerCase();
+    if (message && message.text && message.from) {
+      const senderPhone = message.from;
+      const receivedText = message.text.body.trim().toLowerCase();
 
-     console.log("Received message:", receivedText);
+      console.log("Received message:", receivedText);
 
-     let replyText = `أهلاً بيك، وصلت رسالتك: ${receivedText}`;
+      let replyText;
 
-     if (receivedText.includes("صباح الخير")) {
-       replyText = "صباح النور والسرور، معك Travelio AI، كيف أقدر أساعدك؟";
-     }
+      if (receivedText === "صباح الخير") {
+        replyText = "يا صباح الورد، معك Travelio AI";
+      } else if (receivedText === "مساء الخير") {
+        replyText = "مساء الخير وتحياتي، معك Travelio AI";
+      } else if (receivedText.includes("مين انت") || receivedText.includes("ذكاء صناعي") || receivedText.includes("بوت")) {
+        replyText = "مش مهم، أنا بشتغل 24/7 وما بتعب، أنا عاصم وأوجدني عاصم وسماني Travelio AI";
+      } else {
+        replyText = `أهلاً بيك، وصلت رسالتك: ${receivedText}`;
+      }
 
-     try {
-       await axios.post(
-         `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
-         {
-           messaging_product: "whatsapp",
-           to: senderPhone,
-           text: { body: replyText },
-         },
-         {
-           headers: {
-             Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-             "Content-Type": "application/json",
-           },
-         }
-       );
-     } catch (err) {
-       console.error("Error sending message:", err.response?.data || err.message);
-     }
-   }
+      try {
+        await axios.post(
+          `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
+          {
+            messaging_product: "whatsapp",
+            to: senderPhone,
+            text: { body: replyText },
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      } catch (error) {
+        console.error("Error sending message:", error.response?.data || error.message);
+      }
+    }
 
-   res.sendStatus(200);
- } else {
-   res.sendStatus(404);
- }
+    res.sendStatus(200);
+  } else {
+    res.sendStatus(404);
+  }
 });
 
 app.listen(PORT, () => {
- console.log(`Server is running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
