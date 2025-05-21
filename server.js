@@ -30,26 +30,22 @@ app.post("/webhook", async (req, res) => {
   const body = req.body;
 
   if (body.object) {
-    const entry = body.entry?.[0];
-    const changes = entry?.changes?.[0];
-    const message = changes?.value?.messages?.[0];
+    const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+    const senderPhone = message?.from;
+    const receivedText = message?.text?.body?.trim().toLowerCase();
 
-    if (message && message.text && message.from) {
-      const senderPhone = message.from;
-      const receivedText = message.text.body.trim().toLowerCase();
-
+    if (receivedText && senderPhone) {
       console.log("Received message:", receivedText);
 
-      let replyText;
+      let replyText = `أهلاً بيك، وصلت رسالتك: ${receivedText}`;
 
-      if (receivedText === "صباح الخير") {
+      // ردود ذكية حسب الكلمات
+      if (receivedText.includes("صباح الخير")) {
         replyText = "يا صباح الورد، معك Travelio AI";
-      } else if (receivedText === "مساء الخير") {
-        replyText = "مساء الخير وتحياتي، معك Travelio AI";
+      } else if (receivedText.includes("مساء الخير")) {
+        replyText = "مساء النور، كيف فيني أساعدك؟";
       } else if (receivedText.includes("مين انت") || receivedText.includes("ذكاء صناعي") || receivedText.includes("بوت")) {
         replyText = "مش مهم، أنا بشتغل 24/7 وما بتعب، أنا عاصم وأوجدني عاصم وسماني Travelio AI";
-      } else {
-        replyText = `أهلاً بيك، وصلت رسالتك: ${receivedText}`;
       }
 
       try {
@@ -68,7 +64,7 @@ app.post("/webhook", async (req, res) => {
           }
         );
       } catch (error) {
-        console.error("Error sending message:", error.response?.data || error.message);
+        console.error("Error sending reply:", error.response?.data || error.message);
       }
     }
 
