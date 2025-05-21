@@ -38,22 +38,30 @@ app.post("/webhook", async (req, res) => {
 
      console.log("Received message:", receivedText);
 
-     const replyText = `أهلاً بيك، وصلت رسالتك: ${receivedText}`;
+     let replyText = `أهلاً بيك، وصلت رسالتك: ${receivedText}`;
 
-     await axios.post(
-       `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
-       {
-         messaging_product: "whatsapp",
-         to: senderPhone,
-         text: { body: replyText },
-       },
-       {
-         headers: {
-           Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-           "Content-Type": "application/json",
+     if (receivedText.includes("صباح الخير")) {
+       replyText = "صباح النور والسرور، معك Travelio AI، كيف أقدر أساعدك؟";
+     }
+
+     try {
+       await axios.post(
+         `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
+         {
+           messaging_product: "whatsapp",
+           to: senderPhone,
+           text: { body: replyText },
          },
-       }
-     );
+         {
+           headers: {
+             Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+             "Content-Type": "application/json",
+           },
+         }
+       );
+     } catch (err) {
+       console.error("Error sending message:", err.response?.data || err.message);
+     }
    }
 
    res.sendStatus(200);
